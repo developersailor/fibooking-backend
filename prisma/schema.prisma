@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Booking {
+  id           Int       @id @default(autoincrement())
+  username     String?   @db.VarChar(255)
+  hotelId      Int
+  roomId       Int
+  userId       Int
+  checkInDate  DateTime? @db.Timestamptz(6)
+  checkOutDate DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @db.Timestamptz(6)
+  updatedAt    DateTime  @db.Timestamptz(6)
+  Room         Room      @relation(fields: [roomId], references: [id])
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  body      String
+  reviewId  Int
+  userId    Int
+  createdAt DateTime @db.Timestamptz(6)
+  updatedAt DateTime @db.Timestamptz(6)
+  User      User     @relation(fields: [userId], references: [id])
+}
+
+model Hotel {
+  id            Int      @id @default(autoincrement())
+  name          String?  @db.VarChar(255)
+  description   String?
+  images        Json?    @db.Json
+  createdAt     DateTime @db.Timestamptz(6)
+  updatedAt     DateTime @db.Timestamptz(6)
+  location      String?  @db.VarChar(255)
+  pricePerNight Float?
+  Room          Room[]
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int
+  hotelId   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  content   String
+}
+
+model Room {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(255)
+  type      String    @db.VarChar(255)
+  price     Int
+  hotelId   Int
+  createdAt DateTime
+  updatedAt DateTime
+  Booking   Booking[]
+  Hotel     Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  username  String    @unique
+  password  String?   @db.VarChar(255)
+  email     String?   @unique
+  createdAt DateTime  @db.Timestamptz(6)
+  updatedAt DateTime  @db.Timestamptz(6)
+  Comment   Comment[]
+}
