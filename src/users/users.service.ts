@@ -10,7 +10,7 @@ export class UsersService {
   create(createUserDto: CreateUserDto) {
     return this.prisma.user.create({
       data: {
-        username: createUserDto.name,
+        username: createUserDto.username,
         email: createUserDto.email,
         password: createUserDto.password,
         createdAt: createUserDto.createdAt,
@@ -18,7 +18,6 @@ export class UsersService {
       },
     });
   }
-
   findAll() {
     return this.prisma.user.findMany();
   }
@@ -29,11 +28,17 @@ export class UsersService {
     });
   }
 
+  findOneByUsername(username: string) {
+    return this.prisma.user.findUnique({
+      where: { username: username },
+    });
+  }
+
   update(id: number, updateUserDto: UpdateUserDto) {
     return this.prisma.user.update({
       where: { id: id },
       data: {
-        username: updateUserDto.name,
+        username: updateUserDto.username,
         email: updateUserDto.email,
         password: updateUserDto.password,
       },

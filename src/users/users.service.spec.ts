@@ -36,7 +36,7 @@ describe('UsersService', () => {
 
   it('create should create a new user', async () => {
     const createUserDto: CreateUserDto = {
-      name: 'testUser',
+      username: 'testUser',
       email: 'test@example.com',
       password: 'password123',
       createdAt: new Date(),
@@ -48,7 +48,7 @@ describe('UsersService', () => {
     expect(await service.create(createUserDto)).toBe(createUserDto);
     expect(prisma.user.create).toHaveBeenCalledWith({
       data: {
-        username: createUserDto.name,
+        username: createUserDto.username,
         email: createUserDto.email,
         password: createUserDto.password,
         createdAt: createUserDto.createdAt,
