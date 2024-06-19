@@ -15,6 +15,7 @@ export class UsersService {
         password: createUserDto.password,
         createdAt: createUserDto.createdAt,
         updatedAt: createUserDto.updatedAt,
+        roleId: createUserDto.roleId,
       },
     });
   }

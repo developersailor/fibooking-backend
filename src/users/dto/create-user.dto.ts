@@ -29,4 +29,9 @@ export class CreateUserDto {
     example: new Date(),
   })
   updatedAt: Date;
+  @ApiProperty({
+    description: 'Role Id',
+    example: 'number',
+  })
+  roleId: number;
 }

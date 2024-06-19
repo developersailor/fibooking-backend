@@ -41,6 +41,7 @@ describe('UsersService', () => {
       password: 'password123',
       createdAt: new Date(),
       updatedAt: new Date(),
+      roleId: 1,
     };
 
     (prisma.user.create as jest.Mock).mockResolvedValue(createUserDto);
@@ -53,6 +54,7 @@ describe('UsersService', () => {
         password: createUserDto.password,
         createdAt: createUserDto.createdAt,
         updatedAt: createUserDto.updatedAt,
+        roleId: createUserDto.roleId,
       },
     });
   });

@@ -8,6 +8,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { jwtConstants } from './auth/constants';
 import { LocalStrategy } from './auth/local.strategy';
 import { PrismaModule } from './prisma/prisma.module';
+import { HotelsModule } from './hotels/hotels.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PrismaModule } from './prisma/prisma.module';
       signOptions: { expiresIn: '60s' },
     }),
     PrismaModule,
+    HotelsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, LocalStrategy],
