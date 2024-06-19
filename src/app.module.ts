@@ -9,7 +9,7 @@ import { jwtConstants } from './auth/constants';
 import { LocalStrategy } from './auth/local.strategy';
 import { PrismaModule } from './prisma/prisma.module';
 import { HotelsModule } from './hotels/hotels.module';
-
+import { ThrottlerModule } from '@nestjs/throttler';
 @Module({
   imports: [
     UsersModule,
@@ -18,6 +18,12 @@ import { HotelsModule } from './hotels/hotels.module';
       secret: jwtConstants.secret,
       signOptions: { expiresIn: '60s' },
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 10,
+      },
+    ]),
     PrismaModule,
     HotelsModule,
   ],

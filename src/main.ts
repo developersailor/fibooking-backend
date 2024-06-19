@@ -5,10 +5,17 @@ import {
   SwaggerDocumentOptions,
   SwaggerModule,
 } from '@nestjs/swagger';
-
+import helmet from 'helmet';
+import * as compression from 'compression';
+import * as csurf from 'csurf';
+// somewhere in your initialization file
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { cors: true });
 
+  app.use(compression());
+  app.use(helmet());
+  app.enableCors();
+  app.use(csurf());
   const config = new DocumentBuilder()
     .addSecurity('basic', {
       type: 'http',
