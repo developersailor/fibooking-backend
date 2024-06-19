@@ -10,10 +10,19 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const config = new DocumentBuilder()
-    .setTitle('Fiskindal booking API')
+    .addSecurity('basic', {
+      type: 'http',
+      scheme: 'basic',
+    })
+    .addSecurity('bearer', {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+    })
+    .setTitle('fibooking API')
     .setDescription('The booking API description')
     .setVersion('1.0')
-    .addTag('booking')
+    .addTag('fibooking')
     .build();
   const options: SwaggerDocumentOptions = {
     operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
