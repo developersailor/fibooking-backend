@@ -10,14 +10,10 @@ import {
 import { HotelsService } from './hotels.service';
 import { CreateHotelDto } from './dto/create-hotel.dto';
 import { UpdateHotelDto } from './dto/update-hotel.dto';
-import { ReviewsService } from './reviews/reviews.service';
 
 @Controller('hotels')
 export class HotelsController {
-  constructor(
-    private readonly hotelsService: HotelsService,
-    private readonly reviewsService: ReviewsService,
-  ) {}
+  constructor(private readonly hotelsService: HotelsService) {}
 
   @Post()
   create(@Body() createHotelDto: CreateHotelDto) {

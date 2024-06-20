@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as compression from 'compression';
+import { ValidationPipe } from '@nestjs/common';
 // import csurf from 'csurf';
 // somewhere in your initialization file
 async function bootstrap() {
@@ -29,6 +30,7 @@ async function bootstrap() {
     allowedHeaders: 'Content-Type, Accept',
     credentials: true,
   });
+  app.useGlobalPipes(new ValidationPipe());
   // app.use(
   //   csurf({
   //     cookie: true,
