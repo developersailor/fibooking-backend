@@ -1,5 +1,3 @@
-import { Room } from 'src/hotels/rooms/entities/room.entity';
-
 export class CreateBookingDto {
   id: number;
   userId: number;
@@ -11,5 +9,4 @@ export class CreateBookingDto {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
-  room: Room;
 }

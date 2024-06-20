@@ -7,15 +7,37 @@ import {
 } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as compression from 'compression';
-import * as csurf from 'csurf';
+// import csurf from 'csurf';
 // somewhere in your initialization file
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
 
-  app.use(compression());
+  app.use(
+    compression({
+      filter: (req, res) => {
+        if (req.headers['x-no-compression']) {
+          return false;
+        }
+        return compression.filter(req, res);
+      },
+    }),
+  );
   app.use(helmet());
-  app.enableCors();
-  app.use(csurf());
+  app.enableCors({
+    origin: 'http://localhost:5373/',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type, Accept',
+    credentials: true,
+  });
+  // app.use(
+  //   csurf({
+  //     cookie: true,
+  //     httpOnly: true,
+  //     secure: false,
+  //     key: 'csrfToken',
+  //     value: (req) => req.cookies['XSRF-TOKEN'],
+  //   }),
+  // );
   const config = new DocumentBuilder()
     .addSecurity('basic', {
       type: 'http',

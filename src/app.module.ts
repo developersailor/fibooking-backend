@@ -10,6 +10,9 @@ import { LocalStrategy } from './auth/local.strategy';
 import { PrismaModule } from './prisma/prisma.module';
 import { HotelsModule } from './hotels/hotels.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { HotelsController } from './hotels/hotels.controller';
+import { HotelsService } from './hotels/hotels.service';
+import { ReviewsService } from './hotels/reviews/reviews.service';
 @Module({
   imports: [
     UsersModule,
@@ -27,8 +30,14 @@ import { ThrottlerModule } from '@nestjs/throttler';
     PrismaModule,
     HotelsModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, PrismaService, LocalStrategy],
+  controllers: [AppController, HotelsController],
+  providers: [
+    AppService,
+    PrismaService,
+    LocalStrategy,
+    HotelsService,
+    ReviewsService,
+  ],
   exports: [PrismaModule, LocalStrategy, JwtModule],
 })
 export class AppModule {}

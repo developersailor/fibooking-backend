@@ -1,4 +1,4 @@
-import { Hotel } from '@prisma/client';
+import { Room } from 'src/hotels/rooms/entities/room.entity';
 
 export class Booking {
   id: number;
@@ -9,5 +9,5 @@ export class Booking {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
-  hotel?: Hotel;
+  room: Room;
 }

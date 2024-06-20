@@ -8,19 +8,21 @@ datasource db {
 }
 
 model Booking {
-  id         Int       @id @default(autoincrement())
-  username   String?   @db.VarChar(255)
-  hotelId    Int
-  roomId     Int
-  userId     Int
-  guestName  String?   @db.VarChar(255)
-  guestEmail String?   @db.VarChar(255)
-  guestPhone String?   @db.VarChar(255)
-  checkIn    DateTime? @db.Timestamptz(6)
-  checkOut   DateTime? @db.Timestamptz(6)
-  createdAt  DateTime  @db.Timestamptz(6)
-  updatedAt  DateTime  @db.Timestamptz(6)
-  Room       Room      @relation(fields: [roomId], references: [id])
+  id            Int       @id @default(autoincrement())
+  username      String?   @db.VarChar(255)
+  hotelId       Int
+  roomId        Int
+  userId        Int
+  guestName     String?   @db.VarChar(255)
+  guestSurname  String?   @db.VarChar(255)
+  guestEmail    String?   @db.VarChar(255)
+  guestPhone    String?   @db.VarChar(255)
+  guestIdentity String?   @db.VarChar(255)
+  checkIn       DateTime? @db.Timestamptz(6)
+  checkOut      DateTime? @db.Timestamptz(6)
+  createdAt     DateTime  @db.Timestamptz(6)
+  updatedAt     DateTime  @db.Timestamptz(6)
+  Room          Room      @relation(fields: [roomId], references: [id])
 }
 
 model Comment {
@@ -34,48 +36,47 @@ model Comment {
 }
 
 model Hotel {
-  id            Int      @id @default(autoincrement())
-  name          String?  @db.VarChar(255)
-  description   String?
-  images        Json?    @db.Json
-  createdAt     DateTime @db.Timestamptz(6)
-  updatedAt     DateTime @db.Timestamptz(6)
-  location      String?  @db.VarChar(255)
-  pricePerNight Float?
-  Room          Room[]
-}
-
-model Review {
-  id        Int      @id @default(autoincrement())
-  ratingId  Rating[]
-  hotelId   Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-  content   String
+  id          Int      @id @default(autoincrement())
+  name        String?  @db.VarChar(255)
+  description String?
+  images      Json?    @db.Json
+  createdAt   DateTime @db.Timestamptz(6)
+  updatedAt   DateTime @db.Timestamptz(6)
+  location    String?  @db.VarChar(255)
+  Room        Room[]
 }
 
 model Rating {
   id        Int      @id @default(autoincrement())
   rating    Int
-  ratingId  Int      @unique
-  hotelId   Int
+  hotelId   Int      @unique
   userId    Int
+  Review    Review[]
   createdAt DateTime @default(now())
   updatedAt DateTime
-  Review    Review?  @relation(fields: [reviewId], references: [id])
-  reviewId  Int?
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  ratingId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  content   String
+  Rating    Rating   @relation(fields: [ratingId], references: [id])
 }
 
 model Room {
-  id        Int       @id @default(autoincrement())
-  name      String    @db.VarChar(255)
-  type      String    @db.VarChar(255)
-  price     Int
-  hotelId   Int
-  createdAt DateTime
-  updatedAt DateTime
-  Booking   Booking[]
-  Hotel     Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(255)
+  type          String    @db.VarChar(255)
+  hotelId       Int
+  createdAt     DateTime
+  updatedAt     DateTime
+  isAvailable   Boolean
+  pricePerNight Float?
+  maxGuests     Int?
+  Booking       Booking[]
+  Hotel         Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
 }
 
 model User {

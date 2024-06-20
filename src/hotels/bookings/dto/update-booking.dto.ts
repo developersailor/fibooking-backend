@@ -8,5 +8,4 @@ export class UpdateBookingDto extends PartialType(CreateBookingDto) {
   guestName?: string;
   guestEmail?: string;
   guestPhone?: string;
-  room?: any;
 }
