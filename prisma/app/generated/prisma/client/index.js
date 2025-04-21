@@ -471,11 +471,12 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
+  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
         "fromEnvVar": "DATABASE_URL",
-        "value": "postgresql://postgres:rootme17&@localhost:5432/fibooking"
+        "value": null
       }
     }
   },
