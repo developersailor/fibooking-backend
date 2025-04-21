@@ -1,0 +1,451 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "app/generated/prisma/client"
+}
+
+datasource db {
+  provider = "postgresql" // Example provider
+  url      = env("DATABASE_URL")
+}
+
+// --- Core Hotel & Room Structure ---
+
+/// Represents a Hotel entity.
+model Hotel {
+  id             Int                  @id @default(autoincrement())
+  name           String               @db.VarChar(255)
+  description    String?              @db.Text
+  addressId      Int?                 @unique
+  Address        Address?             @relation(fields: [addressId], references: [id])
+  images         Image[] // Fixed: one-to-many array
+  amenities      HotelAmenity[]
+  roomTypes      RoomType[]
+  rooms          Room[]
+  bookings       Booking[]
+  reviews        Review[]
+  inventory      RoomInventory[]
+  prices         RoomPrice[]
+  policies       CancellationPolicy[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  PromotionHotel PromotionHotel[]
+}
+
+/// Represents a structured physical address. [1, 4, 6, 7]
+model Address {
+  id            Int      @id @default(autoincrement())
+  streetAddress String
+  city          String
+  stateProvince String?
+  postalCode    String
+  countryCode   String   @db.VarChar(2) // ISO 3166-1 alpha-2 code
+  latitude      Float?
+  longitude     Float?
+  hotel         Hotel? // Relation back to Hotel (if 1-to-1)
+  // Add relations to User, etc. if addresses are shared/reused
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+/// Represents an image associated with a Hotel or RoomType. [8, 9]
+model Image {
+  id         Int       @id @default(autoincrement())
+  url        String    @db.Text // URL from image hosting (e.g., Cloudinary, S3)
+  altText    String?
+  order      Int? // For gallery ordering
+  hotelId    Int?
+  Hotel      Hotel?    @relation(fields: [hotelId], references: [id])
+  roomTypeId Int?
+  RoomType   RoomType? @relation(fields: [roomTypeId], references: [id]) // Fixed: Added fields: [roomTypeId]
+  createdAt  DateTime  @default(now())
+
+  @@index([hotelId])
+  @@index([roomTypeId]) // Fixed: Added index for roomTypeId
+}
+
+/// Represents a facility or service offered (e.g., Pool, WiFi). [5, 3]
+model Amenity {
+  id          Int               @id @default(autoincrement())
+  name        String            @unique
+  description String?
+  category    String? // e.g., "General", "Room", "Wellness", "Business"
+  hotels      HotelAmenity[]
+  roomTypes   RoomTypeAmenity[]
+  createdAt   DateTime          @default(now())
+}
+
+/// Join table for Hotel-Amenity many-to-many relationship. [5]
+model HotelAmenity {
+  hotelId   Int
+  amenityId Int
+  details   Json? // Store amenity-specific details for this hotel (e.g., pool size, gym hours)
+  Hotel     Hotel    @relation(fields: [hotelId], references: [id])
+  Amenity   Amenity  @relation(fields: [amenityId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@id([hotelId, amenityId])
+}
+
+/// Represents a category or type of room within a hotel (e.g., "Standard Double"). [11, 12]
+model RoomType {
+  id                Int                 @id @default(autoincrement())
+  hotelId           Int
+  Hotel             Hotel               @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  name              String              @db.VarChar(255)
+  description       String?             @db.Text
+  maxGuests         Int /// Max occupancy for this room type
+  images            Image[]
+  amenities         RoomTypeAmenity[]
+  rooms             Room[]
+  inventory         RoomInventory[]
+  prices            RoomPrice[]
+  bookings          Booking[] // Added to fix missing opposite relation
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  PromotionRoomType PromotionRoomType[]
+
+  @@unique([hotelId, name])
+  @@index([hotelId])
+}
+
+/// Join table for RoomType-Amenity many-to-many relationship.
+model RoomTypeAmenity {
+  roomTypeId Int
+  amenityId  Int
+  RoomType   RoomType @relation(fields: [roomTypeId], references: [id]) // Fixed: Added fields: [roomTypeId]
+  Amenity    Amenity  @relation(fields: [amenityId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@id([roomTypeId, amenityId]) // Fixed: Added composite ID fields
+}
+
+/// Represents an individual physical room instance. [12, 13]
+model Room {
+  id         Int        @id @default(autoincrement())
+  roomTypeId Int
+  RoomType   RoomType   @relation(fields: [roomTypeId], references: [id])
+  roomNumber String     @db.VarChar(50)
+  floor      String?    @db.VarChar(50)
+  status     RoomStatus @default(AVAILABLE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  Hotel      Hotel?     @relation(fields: [hotelId], references: [id])
+  hotelId    Int?
+
+  @@index([roomTypeId]) // Fixed: Added index for roomTypeId
+}
+
+/// Physical status of a room instance.
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED // Could be derived from bookings, but useful for housekeeping
+  MAINTENANCE
+  CLEANING
+}
+
+// --- Dynamic Availability & Pricing ---
+
+/// Tracks daily inventory counts per RoomType. Essential for availability checks. [18, 41]
+model RoomInventory {
+  id             Int      @id @default(autoincrement())
+  roomTypeId     Int
+  RoomType       RoomType @relation(fields: [roomTypeId], references: [id])
+  date           DateTime @db.Date /// Date for which inventory is tracked
+  totalInventory Int /// Total physical rooms of this type
+  bookedCount    Int      @default(0) /// Rooms booked on this date
+  // Optional: overbookingThreshold Int @default(0) /// Allowed overbooking count [11]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  Hotel          Hotel?   @relation(fields: [hotelId], references: [id])
+  hotelId        Int?
+
+  @@unique([roomTypeId, date]) // Fixed: Added unique constraint fields
+  @@index([date])
+}
+
+/// Stores the price for a specific RoomType on a specific date. Enables dynamic pricing. [15, 18]
+model RoomPrice {
+  id         Int          @id @default(autoincrement())
+  roomTypeId Int
+  RoomType   RoomType     @relation(fields: [roomTypeId], references: [id])
+  date       DateTime     @db.Date /// Date for which this price applies
+  price      Float /// Price per night for this date
+  currency   CurrencyCode @default(USD)
+  priceType  PriceType?   @default(STANDARD) /// Categorizes the price [15]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  Hotel      Hotel?       @relation(fields: [hotelId], references: [id])
+  hotelId    Int?
+
+  @@unique([roomTypeId, date]) // Fixed: Added unique constraint fields
+  @@index([date])
+}
+
+/// Enum for categorizing room prices. [15]
+enum PriceType {
+  STANDARD
+  DISCOUNTED
+  PEAK_SEASON
+  EVENT
+  PROMOTIONAL
+}
+
+/// Enum for Currency Codes
+enum CurrencyCode {
+  USD
+  EUR
+  TRY
+}
+
+// --- User & Role Management ---
+
+/// Represents a registered user of the application.
+model User {
+  id            Int            @id @default(autoincrement())
+  username      String         @unique @db.VarChar(100) // Keep if used for login
+  email         String?        @unique @db.VarChar(255)
+  password      String?        @db.VarChar(255) // Store hashed password
+  firstName     String?        @db.VarChar(100)
+  lastName      String?        @db.VarChar(100)
+  phoneNumber   String?        @unique @db.VarChar(50) // Optional: make unique if needed
+  roleId        Int
+  Role          Role           @relation(fields: [roleId], references: [id])
+  bookings      Booking[] // Changed to an array
+  reviews       Review[]
+  cancellations Cancellation[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+/// Defines user roles within the system.
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(50) // e.g., "CUSTOMER", "HOTEL_ADMIN", "SYSTEM_ADMIN"
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- Booking, Payment & Review ---
+
+/// Represents a customer booking reservation.
+model Booking {
+  id            Int           @id @default(autoincrement())
+  userId        Int? /// Link to registered user (if applicable)
+  User          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  roomTypeId    Int /// Type of room booked
+  RoomType      RoomType      @relation(fields: [roomTypeId], references: [id])
+  numberOfRooms Int           @default(1)
+  checkIn       DateTime      @db.Date /// Check-in date
+  checkOut      DateTime      @db.Date /// Check-out date
+  totalAmount   Float? /// Final calculated amount at time of booking
+  currency      CurrencyCode  @default(USD)
+  status        BookingStatus @default(PENDING) /// Current status of the booking [11, 15]
+
+  // Guest details (populated if userId is null)
+  guestName     String? @db.VarChar(255)
+  guestSurname  String? @db.VarChar(255)
+  guestEmail    String? @db.VarChar(255)
+  guestPhone    String? @db.VarChar(255)
+  guestIdentity String? @db.VarChar(255) // e.g., Passport/ID number snippet
+
+  // Related entities
+  payment              Payment? /// Link to the payment record
+  review               Review? /// Link to the review for this booking
+  promotionId          Int? /// Optional link to applied promotion
+  Promotion            Promotion?          @relation(fields: [promotionId], references: [id])
+  cancellationPolicyId Int? /// Link to applicable cancellation policy
+  CancellationPolicy   CancellationPolicy? @relation(fields: [cancellationPolicyId], references: [id])
+  cancellation         Cancellation? /// Link to cancellation details (if using separate model)
+  promotionSnapshot    Json?
+  policySnapshot       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Hotel     Hotel?   @relation(fields: [hotelId], references: [id])
+  hotelId   Int?
+
+  @@index([userId])
+  @@index([roomTypeId])
+  @@index([status])
+  @@index([checkIn])
+  @@index([checkOut])
+}
+
+/// Defines the possible states of a booking. [11, 15, 28]
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  CHECKED_IN
+  CHECKED_OUT
+  NO_SHOW
+  REJECTED
+}
+
+/// Represents a payment attempt/record for a booking. [14, 15, 28]
+model Payment {
+  id               String         @id @default(cuid())
+  bookingId        Int            @unique
+  Booking          Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount           Float
+  currency         CurrencyCode   @default(USD)
+  paymentMethod    PaymentMethod?
+  paymentGatewayId String?        @unique /// Transaction ID from payment provider
+  status           PaymentStatus  @default(PENDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  transactions     Transaction[] /// Detailed transaction ledger
+
+  @@index([bookingId])
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  PAYPAL
+  BANK_TRANSFER
+  OTHER
+}
+
+/// Status of the overall payment for the booking. [15, 28]
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIAL_REFUND
+}
+
+/// Detailed ledger of financial operations related to a Payment. [28, 30, 31]
+model Transaction {
+  id              String            @id @default(cuid())
+  paymentId       String
+  Payment         Payment           @relation(fields: [paymentId], references: [id])
+  type            TransactionType
+  amount          Float
+  currency        CurrencyCode      @default(USD)
+  gatewayResponse Json? /// Raw response from payment gateway
+  timestamp       DateTime          @default(now())
+  status          TransactionStatus @default(PENDING) /// Status of this specific attempt
+
+  @@index([paymentId])
+}
+
+enum TransactionType {
+  AUTHORIZATION
+  CHARGE
+  REFUND
+  VOID
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILURE
+}
+
+/// Centralized model for user reviews, linked to a Booking. [16, 26]
+model Review {
+  id        Int      @id @default(autoincrement())
+  bookingId Int      @unique /// Ensures review is tied to a verified stay
+  Booking   Booking  @relation(fields: [bookingId], references: [id])
+  userId    Int
+  User      User     @relation(fields: [userId], references: [id])
+  rating    Int /// e.g., 1-5 stars
+  title     String?  @db.VarChar(255)
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Hotel     Hotel?   @relation(fields: [hotelId], references: [id])
+  hotelId   Int?
+
+  @@index([userId])
+  @@index([bookingId])
+}
+
+// --- Promotions & Policies ---
+
+/// Defines promotional offers and discounts. [37, 38, 39]
+model Promotion {
+  id                Int                 @id @default(autoincrement())
+  code              String              @unique @db.VarChar(100) /// User-facing promo code
+  description       String?             @db.Text
+  discountType      DiscountType        @default(PERCENTAGE)
+  discountValue     Float
+  validFrom         DateTime?
+  validUntil        DateTime?
+  maxUses           Int? /// Max total uses allowed
+  usesPerUser       Int?                @default(1) /// Max uses per customer
+  currentUses       Int                 @default(0)
+  minNights         Int? /// Minimum stay duration
+  minAmount         Float? /// Minimum booking value
+  isActive          Boolean             @default(true)
+  bookings          Booking[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  PromotionHotel    PromotionHotel[]
+  PromotionRoomType PromotionRoomType[]
+
+  @@index([code])
+  @@index([isActive, validUntil])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+/// Defines cancellation policies. [15, 27, 33, 40]
+model CancellationPolicy {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(255)
+  description String?   @db.Text
+  rules       Json? /// Store complex rules as JSON (e.g., deadlines, fees)
+  // Example rule structure: {"freeCancellationDays": 7, "penaltyRules":}
+  bookings    Booking[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Hotel       Hotel?    @relation(fields: [hotelId], references: [id])
+  hotelId     Int?
+
+  @@index([name])
+}
+
+/// Optional: Records details of a specific booking cancellation event. [16]
+model Cancellation {
+  id                Int      @id @default(autoincrement())
+  bookingId         Int      @unique
+  Booking           Booking  @relation(fields: [bookingId], references: [id])
+  reason            String?  @db.Text
+  cancelledAt       DateTime @default(now())
+  processedByUserId Int? /// Admin/Staff user who handled it
+  User              User?    @relation(fields: [processedByUserId], references: [id])
+  refundAmount      Float?
+  refundStatus      String? // e.g., "PENDING", "COMPLETED", "FAILED"
+  notes             String?  @db.Text
+
+  @@index([processedByUserId]) // Fixed: Added index for processedByUserId
+}
+
+model PromotionHotel {
+  id          Int       @id @default(autoincrement())
+  promotionId Int
+  hotelId     Int
+  Promotion   Promotion @relation(fields: [promotionId], references: [id])
+  Hotel       Hotel     @relation(fields: [hotelId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@unique([promotionId, hotelId])
+}
+
+model PromotionRoomType {
+  id          Int       @id @default(autoincrement())
+  promotionId Int
+  roomTypeId  Int
+  Promotion   Promotion @relation(fields: [promotionId], references: [id])
+  RoomType    RoomType  @relation(fields: [roomTypeId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@unique([promotionId, roomTypeId])
+}
